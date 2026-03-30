@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Crop Prediction System</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --green-dark: #1a3a1f;
+      --green-mid: #2d6a35;
+      --green-light: #4a9e56;
+      --green-pale: #a8d5ae;
+      --gold: #c9a84c;
+      --cream: #f5f0e8;
+    }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background-color: var(--green-dark);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Floating leaves */
+    .leaves { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; overflow: hidden; }
+    .leaf { position: absolute; opacity: 0.06; animation: floatUp linear infinite; font-size: 1.5rem; }
+    @keyframes floatUp {
+      0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+      10% { opacity: 0.06; }
+      90% { opacity: 0.06; }
+      100% { transform: translateY(-100px) rotate(360deg); opacity: 0; }
+    }
+
+    /* Background glow */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        radial-gradient(ellipse at 20% 30%, rgba(74,158,86,0.2) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 70%, rgba(201,168,76,0.1) 0%, transparent 40%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .page-wrapper { position: relative; z-index: 1; }
+
+    /* ── HERO ── */
+    .hero {
+      text-align: center;
+      padding: 70px 24px 50px;
+      animation: fadeDown 0.8s ease both;
+    }
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-24px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(201,168,76,0.15);
+      border: 1px solid rgba(201,168,76,0.3);
+      border-radius: 50px;
+      padding: 6px 18px;
+      font-size: 0.78rem;
+      color: var(--gold);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      font-weight: 500;
+      margin-bottom: 24px;
+    }
+    .hero h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2.8rem, 6vw, 5rem);
+      font-weight: 900;
+      color: var(--cream);
+      line-height: 1.05;
+      letter-spacing: -1px;
+      margin-bottom: 18px;
+    }
+    .hero h1 span { color: var(--gold); }
+    .hero p {
+      color: var(--green-pale);
+      font-size: 1.1rem;
+      font-weight: 300;
+      max-width: 500px;
+      margin: 0 auto 32px;
+      line-height: 1.7;
+    }
+    .gold-divider { width: 60px; height: 3px; background: var(--gold); margin: 0 auto 50px; border-radius: 2px; }
+
+    /* ── STATS ── */
+    .stats-row {
+      display: flex;
+      justify-content: center;
+      gap: 0;
+      max-width: 700px;
+      margin: 0 auto 56px;
+      animation: fadeUp 0.8s ease 0.2s both;
+    }
+    .stat-item {
+      flex: 1;
+      text-align: center;
+      padding: 24px 16px;
+      border-right: 1px solid rgba(168,213,174,0.2);
+    }
+    .stat-item:last-child { border-right: none; }
+    .stat-number {
+      font-family: 'Playfair Display', serif;
+      font-size: 2.4rem;
+      font-weight: 900;
+      color: var(--gold);
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+    .stat-label {
+      font-size: 0.78rem;
+      color: var(--green-pale);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 400;
+    }
+
+    /* ── FORM CARD ── */
+    .form-section {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+      animation: fadeUp 0.9s ease 0.3s both;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .card {
+      background: var(--cream);
+      border-radius: 28px;
+      padding: 48px 52px;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.4), 0 0 0 1px rgba(201,168,76,0.15);
+    }
+    .card-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.4rem;
+      color: var(--green-dark);
+      margin-bottom: 32px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .card-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: rgba(45,106,53,0.2);
+    }
+
+    /* Step indicator */
+    .steps-indicator {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 36px;
+      gap: 0;
+    }
+    .step-dot {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: rgba(45,106,53,0.15);
+      border: 2px solid rgba(45,106,53,0.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--green-mid);
+      transition: all 0.3s;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .step-dot.active {
+      background: var(--green-mid);
+      border-color: var(--green-mid);
+      color: white;
+      box-shadow: 0 4px 12px rgba(45,106,53,0.4);
+    }
+    .step-dot.done {
+      background: var(--green-light);
+      border-color: var(--green-light);
+      color: white;
+    }
+    .step-line {
+      flex: 1;
+      height: 2px;
+      background: rgba(45,106,53,0.15);
+      max-width: 80px;
+      transition: background 0.3s;
+    }
+    .step-line.done { background: var(--green-light); }
+
+    /* Steps */
+    .step-panel { display: none; }
+    .step-panel.active { display: block; animation: slideIn 0.4s ease both; }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(20px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    .step-title {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--green-mid);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 20px;
+    }
+
+    /* Form grid */
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
+    .field { display: flex; flex-direction: column; gap: 7px; }
+    label { font-size: 0.78rem; font-weight: 500; color: var(--green-mid); text-transform: uppercase; letter-spacing: 1px; }
+    .input-wrap { position: relative; }
+    .input-wrap .unit { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 0.75rem; color: var(--green-light); font-weight: 500; pointer-events: none; }
+    input[type="number"] {
+      width: 100%; padding: 13px 44px 13px 16px;
+      border: 2px solid rgba(45,106,53,0.2);
+      border-radius: 12px;
+      font-size: 1rem; font-family: 'DM Sans', sans-serif;
+      color: #1a1a1a; background: #fff;
+      transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+      outline: none;
+    }
+    input[type="number"]:focus { border-color: var(--green-light); box-shadow: 0 0 0 4px rgba(74,158,86,0.12); transform: translateY(-1px); }
+    .hint { font-size: 0.72rem; color: #999; }
+
+    /* Navigation buttons */
+    .btn-row { display: flex; gap: 12px; margin-top: 32px; justify-content: flex-end; }
+    .btn-next, .btn-prev, .btn-submit {
+      padding: 13px 32px;
+      border-radius: 50px;
+      font-size: 0.95rem;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: transform 0.2s, box-shadow 0.2s;
+      letter-spacing: 0.3px;
+    }
+    .btn-next, .btn-submit {
+      background: linear-gradient(135deg, var(--green-mid), var(--green-light));
+      color: white;
+      box-shadow: 0 8px 24px rgba(45,106,53,0.4);
+    }
+    .btn-prev {
+      background: transparent;
+      color: var(--green-mid);
+      border: 2px solid rgba(45,106,53,0.3);
+    }
+    .btn-next:hover, .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(45,106,53,0.5); }
+    .btn-prev:hover { background: rgba(45,106,53,0.08); }
+
+    /* Crops showcase */
+    .crops-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      max-width: 700px;
+      margin: 0 auto 40px;
+      animation: fadeUp 0.9s ease 0.4s both;
+    }
+    .crop-pill {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(168,213,174,0.2);
+      border-radius: 50px;
+      padding: 6px 16px;
+      font-size: 0.8rem;
+      color: var(--green-pale);
+      font-weight: 400;
+    }
+
+    @media (max-width: 600px) {
+      .card { padding: 28px 20px; }
+      .form-grid { grid-template-columns: 1fr; }
+      .stats-row { flex-direction: column; gap: 0; }
+      .stat-item { border-right: none; border-bottom: 1px solid rgba(168,213,174,0.2); }
+      .stat-item:last-child { border-bottom: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="leaves" id="leaves"></div>
+
+<div class="page-wrapper">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-badge">🌿 AI Powered &nbsp;•&nbsp; 99.3% Accuracy</div>
+    <h1>Smart <span>Crop</span><br>Recommendation</h1>
+    <p>Enter your soil and climate data to get the most suitable crop recommendation powered by Machine Learning</p>
+    <div class="gold-divider"></div>
+  </section>
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-item">
+      <div class="stat-number" data-target="22">0</div>
+      <div class="stat-label">Crops Supported</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-number" data-target="99">0</div>
+      <div class="stat-label">% Accuracy</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-number" data-target="2200">0</div>
+      <div class="stat-label">Data Points</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-number" data-target="7">0</div>
+      <div class="stat-label">Parameters</div>
+    </div>
+  </div>
+
+  <!-- CROPS PILLS -->
+  <div class="crops-row">
+    <span class="crop-pill">🌾 Rice</span>
+    <span class="crop-pill">🌽 Maize</span>
+    <span class="crop-pill">🍎 Apple</span>
+    <span class="crop-pill">🍌 Banana</span>
+    <span class="crop-pill">🥭 Mango</span>
+    <span class="crop-pill">🍇 Grapes</span>
+    <span class="crop-pill">🍊 Orange</span>
+    <span class="crop-pill">☕ Coffee</span>
+    <span class="crop-pill">🥥 Coconut</span>
+    <span class="crop-pill">🌱 Lentil</span>
+    <span class="crop-pill">🫘 Chickpea</span>
+    <span class="crop-pill">+ 11 more</span>
+  </div>
+
+  <!-- FORM -->
+  <section class="form-section">
+    <div class="card">
+      <div class="card-title">🌱 Enter Parameters</div>
+
+      <!-- Step indicator -->
+      <div class="steps-indicator">
+        <div class="step-dot active" id="dot-1">1</div>
+        <div class="step-line" id="line-1"></div>
+        <div class="step-dot" id="dot-2">2</div>
+        <div class="step-line" id="line-2"></div>
+        <div class="step-dot" id="dot-3">3</div>
+      </div>
+
+      <form action="/predict" method="POST" id="predict-form">
+
+        <!-- Step 1: NPK -->
+        <div class="step-panel active" id="step-1">
+          <div class="step-title">Step 1 of 3 — Soil Nutrients (NPK)</div>
+          <div class="form-grid">
+            <div class="field">
+              <label for="N">Nitrogen (N)</label>
+              <div class="input-wrap">
+                <input type="number" id="N" name="N" placeholder="e.g. 78" step="any" required />
+                <span class="unit">kg/ha</span>
+              </div>
+              <span class="hint">Nitrogen content in soil</span>
+            </div>
+            <div class="field">
+              <label for="P">Phosphorus (P)</label>
+              <div class="input-wrap">
+                <input type="number" id="P" name="P" placeholder="e.g. 42" step="any" required />
+                <span class="unit">kg/ha</span>
+              </div>
+              <span class="hint">Phosphorus content in soil</span>
+            </div>
+            <div class="field">
+              <label for="K">Potassium (K)</label>
+              <div class="input-wrap">
+                <input type="number" id="K" name="K" placeholder="e.g. 42" step="any" required />
+                <span class="unit">kg/ha</span>
+              </div>
+              <span class="hint">Potassium content in soil</span>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button type="button" class="btn-next" onclick="goStep(2)">Next →</button>
+          </div>
+        </div>
+
+        <!-- Step 2: Climate -->
+        <div class="step-panel" id="step-2">
+          <div class="step-title">Step 2 of 3 — Climate Conditions</div>
+          <div class="form-grid">
+            <div class="field">
+              <label for="temperature">Temperature</label>
+              <div class="input-wrap">
+                <input type="number" id="temperature" name="temperature" placeholder="e.g. 20.5" step="any" required />
+                <span class="unit">°C</span>
+              </div>
+              <span class="hint">Average temperature</span>
+            </div>
+            <div class="field">
+              <label for="humidity">Humidity</label>
+              <div class="input-wrap">
+                <input type="number" id="humidity" name="humidity" placeholder="e.g. 81.6" step="any" required />
+                <span class="unit">%</span>
+              </div>
+              <span class="hint">Relative humidity</span>
+            </div>
+            <div class="field">
+              <label for="rainfall">Rainfall</label>
+              <div class="input-wrap">
+                <input type="number" id="rainfall" name="rainfall" placeholder="e.g. 200" step="any" required />
+                <span class="unit">mm</span>
+              </div>
+              <span class="hint">Annual rainfall</span>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button type="button" class="btn-prev" onclick="goStep(1)">← Back</button>
+            <button type="button" class="btn-next" onclick="goStep(3)">Next →</button>
+          </div>
+        </div>
+
+        <!-- Step 3: pH -->
+        <div class="step-panel" id="step-3">
+          <div class="step-title">Step 3 of 3 — Soil pH</div>
+          <div class="form-grid" style="max-width: 320px;">
+            <div class="field">
+              <label for="ph">Soil pH</label>
+              <div class="input-wrap">
+                <input type="number" id="ph" name="ph" placeholder="e.g. 6.5" step="any" min="0" max="14" required />
+                <span class="unit">pH</span>
+              </div>
+              <span class="hint">pH value between 0–14</span>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button type="button" class="btn-prev" onclick="goStep(2)">← Back</button>
+            <button type="submit" class="btn-submit">🌾 Predict Best Crop</button>
+          </div>
+        </div>
+
+      </form>
+    </div>
+  </section>
+
+</div>
+
+<script>
+  // Floating leaves
+  const leavesContainer = document.getElementById('leaves');
+  const leafEmojis = ['🍃', '🌿', '🌱', '🍀'];
+  for (let i = 0; i < 14; i++) {
+    const leaf = document.createElement('div');
+    leaf.className = 'leaf';
+    leaf.textContent = leafEmojis[Math.floor(Math.random() * leafEmojis.length)];
+    leaf.style.left = Math.random() * 100 + '%';
+    leaf.style.animationDuration = (14 + Math.random() * 20) + 's';
+    leaf.style.animationDelay = (Math.random() * 20) + 's';
+    leaf.style.fontSize = (1 + Math.random() * 1.5) + 'rem';
+    leavesContainer.appendChild(leaf);
+  }
+
+  // Counter animation
+  function animateCounter(el) {
+    const target = parseInt(el.dataset.target);
+    const duration = 1800;
+    const start = performance.now();
+    function update(now) {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const ease = 1 - Math.pow(1 - progress, 3);
+      el.textContent = Math.floor(ease * target) + (target === 99 ? '.3%' : target === 2200 ? '+' : '');
+      if (progress < 1) requestAnimationFrame(update);
+    }
+    requestAnimationFrame(update);
+  }
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        document.querySelectorAll('.stat-number').forEach(animateCounter);
+        observer.disconnect();
+      }
+    });
+  }, { threshold: 0.3 });
+  observer.observe(document.querySelector('.stats-row'));
+
+  // Step wizard
+  let currentStep = 1;
+  function goStep(step) {
+    document.getElementById('step-' + currentStep).classList.remove('active');
+    document.getElementById('dot-' + currentStep).classList.remove('active');
+
+    if (step > currentStep) {
+      document.getElementById('dot-' + currentStep).classList.add('done');
+      if (currentStep < 3) document.getElementById('line-' + currentStep).classList.add('done');
+    } else {
+      document.getElementById('dot-' + currentStep).classList.remove('done');
+      if (currentStep > 1) document.getElementById('line-' + (currentStep-1)).classList.remove('done');
+    }
+
+    currentStep = step;
+    document.getElementById('step-' + currentStep).classList.add('active');
+    document.getElementById('dot-' + currentStep).classList.add('active');
+  }
+</script>
+</body>
+</html>
