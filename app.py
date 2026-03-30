@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request
 import pickle
 import numpy as np
+import os
 import requests
 
 app = Flask(__name__)
@@ -88,5 +89,7 @@ def predict():
     except Exception as e:
         return render_template('result.html', crop=None, error=str(e))
 
-if __name__ == '__main__':
-    app.run(debug=True)
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
